@@ -1,4 +1,4 @@
-name: Get Current IP Address
+name: get-cert
 
 on:
   workflow_dispatch:
