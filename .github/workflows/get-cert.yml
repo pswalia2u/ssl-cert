@@ -75,10 +75,13 @@ jobs:
             -d pdfmerge.work \
             -d "*.pdfmerge.work" \
             --agree-tos --register-unsafely-without-email
-
+      
+      - name: Verify Certificate Directory
+        run: ls -la /etc/letsencrypt/live/pdfmerge.work/ ; sleep 5
+      
       - name: Copy Certificates to Repo Folder
         run: |
-          mkdir -p certs
+          sudo mkdir -p certs
           sudo cp /etc/letsencrypt/live/pdfmerge.work/* certs/
           sudo chmod -R 644 certs
 
