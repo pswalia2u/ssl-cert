@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  get_ip:
+  get_ip_and_update_record:
     runs-on: ubuntu-latest
+
     steps:
       - name: Get Current IP Address
         id: get_ip
@@ -16,3 +17,70 @@ jobs:
 
       - name: Display IP Address
         run: echo "The current IP address is ${{ steps.get_ip.outputs.ip }}"
+
+      - name: Update Cloudflare A Record
+        env:
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}  # Use GitHub Secrets to securely store the API token
+          DOMAIN: "pdfmerge.work"
+          NEW_IP: ${{ steps.get_ip.outputs.ip }}
+        run: |
+          #!/bin/bash
+
+          API_ENDPOINT="https://api.cloudflare.com/client/v4"
+
+          # Function to get the Zone ID
+          get_zone_id() {
+            curl -s -X GET "$API_ENDPOINT/zones?name=$DOMAIN" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" | jq -r '.result[0].id'
+          }
+
+          # Get the Zone ID for the domain
+          ZONE_ID=$(get_zone_id)
+
+          # Check if the Zone ID was successfully retrieved
+          if [ "$ZONE_ID" == "null" ] || [ -z "$ZONE_ID" ]; then
+            echo "Error: Could not retrieve Zone ID for domain $DOMAIN."
+            exit 1
+          fi
+
+          # Function to get the DNS Record ID for the A record of the root domain
+          get_record_id() {
+            curl -s -X GET "$API_ENDPOINT/zones/$ZONE_ID/dns_records?type=A&name=$DOMAIN" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" | jq -r '.result[0].id'
+          }
+
+          # Get the DNS record ID if it exists
+          RECORD_ID=$(get_record_id)
+
+          # Check if RECORD_ID is null (record does not exist)
+          if [ "$RECORD_ID" == "null" ]; then
+            echo "A record for $DOMAIN does not exist. Creating a new one."
+
+            # Create a new DNS record
+            curl -s -X POST "$API_ENDPOINT/zones/$ZONE_ID/dns_records" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "type": "A",
+                "name": "'"$DOMAIN"'",
+                "content": "'"$NEW_IP"'",
+                "ttl": 120,
+                "proxied": false
+              }' | jq
+          else
+            echo "A record for $DOMAIN exists. Updating the IP address."
+
+            # Update the existing DNS record
+            curl -s -X PUT "$API_ENDPOINT/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "type": "A",
+                "name": "'"$DOMAIN"'",
+                "content": "'"$NEW_IP"'",
+                "ttl": 120,
+                "proxied": false
+              }' | jq
+          fi
