@@ -86,6 +86,8 @@ jobs:
           fi
       - name: install certbot
         run: sudo apt update && sudo apt install -y certbot python3-certbot-dns-cloudflare
+      - name: Saving token in cloudflare.ini
+        run: echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > /tmp/cloudflare.ini
       - name: Request SSL Certificate
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
