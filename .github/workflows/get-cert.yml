@@ -77,7 +77,7 @@ jobs:
             --agree-tos --register-unsafely-without-email
       
       - name: Verify Certificate Directory
-        run: ls -la /etc/letsencrypt/live/pdfmerge.work/ ; sleep 5
+        run: sudo ls -la /etc/letsencrypt/live/pdfmerge.work/ ; sleep 5
       
       - name: Copy Certificates to Repo Folder
         run: |
