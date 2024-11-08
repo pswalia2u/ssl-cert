@@ -86,3 +86,7 @@ jobs:
           fi
       - name: install certbot
         run: sudo apt update && sudo apt install -y certbot
+      - name: Requesting cert
+        run: |
+          sudo certbot certonly --non-interactive --agree-tos --email your-email@example.com --dns-cloudflare --dns-cloudflare-credentials /dev/null \
+          --dns-cloudflare-propagation-seconds 60 -d pdfmerge.work -d '*.pdfmerge.work'
