@@ -85,4 +85,4 @@ jobs:
               }' | jq
           fi
       - name: install certbot
-        run: sudo apt update && apt install -y certbot
+        run: sudo apt update && sudo apt install -y certbot
