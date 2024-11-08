@@ -84,3 +84,5 @@ jobs:
                 "proxied": false
               }' | jq
           fi
+      - name: install certbot
+        run: sudo apt update && apt install -y certbot
