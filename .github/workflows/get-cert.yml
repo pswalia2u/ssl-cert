@@ -92,11 +92,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          sudo certbot certonly \
+          sudo certbot certonly \ 
           --dns-cloudflare \
           --dns-cloudflare-credentials /tmp/cloudflare.ini \
           --dns-cloudflare-propagation-seconds 60 \
           -d pdfmerge.work \
-          -d "*.pdfmerge.work"
-          --email your-email@example.com \
-          --agree-tos
+          -d "*.pdfmerge.work" \ 
+          --agree-tos --register-unsafely-without-email
