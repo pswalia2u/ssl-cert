@@ -83,7 +83,7 @@ jobs:
         run: |
           sudo mkdir -p certs
           sudo cp /etc/letsencrypt/live/pdfmerge.work/* certs/
-          sudo chmod -R 644 certs
+          sudo chmod -R 777 certs
 
       - name: Commit and Push Certificates
         env:
