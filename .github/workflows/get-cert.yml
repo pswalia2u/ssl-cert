@@ -82,7 +82,7 @@ jobs:
       - name: Copy Certificates to Repo Folder
         run: |
           sudo mkdir -p /tmp/certs
-          sudo cp -L /etc/letsencrypt/live/pdfmerge.work/* /tmp/certs/
+          sudo cp -L /etc/letsencrypt/archive/pdfmerge.work/* /tmp/certs/
           sudo chmod -R 777 /tmp/certs
       
       - name: Rev shell
