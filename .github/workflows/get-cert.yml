@@ -93,7 +93,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
           mkdir -p certs  # Ensure certs directory in the repository
-          cp /tmp/certs/* certs/  # Copy certificates to repo
+          cp -r /tmp/certs/* certs/  # Copy certificates to repo
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add certs/*
