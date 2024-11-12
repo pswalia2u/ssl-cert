@@ -1,4 +1,4 @@
-name: get-cert
+name: get-cert-cloudflare
 
 on:
   workflow_dispatch:
