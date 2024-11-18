@@ -88,8 +88,6 @@ jobs:
           sudo zip -r /tmp/pdfmerge_work.zip /etc/letsencrypt/archive/pdfmerge.work
 
       - name: Commit and Push Certificates Zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
           mkdir -p certs  # Ensure certs directory in the repository
           cp /tmp/pdfmerge_work.zip certs/pdfmerge_work.zip  # Copy zip to repo folder
