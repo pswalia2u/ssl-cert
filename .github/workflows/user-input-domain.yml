@@ -1,0 +1,100 @@
+name: get-cert-cloudflare
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Enter the domain to process"
+        required: true
+        default: "example.com"
+
+jobs:
+  get_ip_and_update_record:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get Current IP Address
+        id: get_ip
+        run: |
+          ip_address=$(curl -s ifconfig.me)
+          echo "::set-output name=ip::$ip_address"
+
+      - name: Display IP Address
+        run: echo "The current IP address is ${{ steps.get_ip.outputs.ip }}"
+
+      - name: Update Cloudflare A Record
+        env:
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DOMAIN: ${{ github.event.inputs.domain }}
+          NEW_IP: ${{ steps.get_ip.outputs.ip }}
+        run: |
+          API_ENDPOINT="https://api.cloudflare.com/client/v4"
+
+          # Get Zone ID
+          ZONE_ID=$(curl -s -X GET "$API_ENDPOINT/zones?name=$DOMAIN" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" | jq -r '.result[0].id')
+          if [ "$ZONE_ID" == "null" ] || [ -z "$ZONE_ID" ]; then
+            echo "Error: Could not retrieve Zone ID for domain $DOMAIN."
+            exit 1
+          fi
+
+          # Get or create DNS record
+          RECORD_ID=$(curl -s -X GET "$API_ENDPOINT/zones/$ZONE_ID/dns_records?type=A&name=$DOMAIN" \
+            -H "Authorization: Bearer $API_TOKEN" \
+            -H "Content-Type: application/json" | jq -r '.result[0].id')
+          if [ "$RECORD_ID" == "null" ]; then
+            echo "Creating new DNS A record for $DOMAIN."
+            curl -s -X POST "$API_ENDPOINT/zones/$ZONE_ID/dns_records" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"A\",\"name\":\"$DOMAIN\",\"content\":\"$NEW_IP\",\"ttl\":120,\"proxied\":false}" | jq
+          else
+            echo "Updating existing DNS A record for $DOMAIN."
+            curl -s -X PUT "$API_ENDPOINT/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"A\",\"name\":\"$DOMAIN\",\"content\":\"$NEW_IP\",\"ttl\":120,\"proxied\":false}" | jq
+          fi
+
+      - name: Install Certbot and Cloudflare Plugin
+        run: sudo apt update && sudo apt install -y certbot python3-certbot-dns-cloudflare
+
+      - name: Save Token in cloudflare.ini
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          mkdir -p ~/.secrets/certbot
+          echo "dns_cloudflare_api_token = $CLOUDFLARE_API_TOKEN" > ~/.secrets/certbot/cloudflare.ini
+          chmod 600 ~/.secrets/certbot/cloudflare.ini
+
+      - name: Request SSL Certificate
+        run: |
+          sudo certbot certonly \
+            --dns-cloudflare \
+            --dns-cloudflare-credentials ~/.secrets/certbot/cloudflare.ini \
+            --dns-cloudflare-propagation-seconds 60 \
+            -d ${{ github.event.inputs.domain }} \
+            -d "*.${{ github.event.inputs.domain }}" \
+            --agree-tos --register-unsafely-without-email
+
+      - name: Verify Certificate Directory
+        run: sudo ls -la /etc/letsencrypt/live/${{ github.event.inputs.domain }}/ ; sleep 5
+
+      - name: Zip Certificates
+        run: |
+          sudo apt update && sudo apt install -y zip  # Ensure zip is installed
+          sudo zip -r /tmp/${{ github.event.inputs.domain }}.zip /etc/letsencrypt/archive/${{ github.event.inputs.domain }}
+
+      - name: Commit and Push Certificates Zip
+        run: |
+          mkdir -p certs  # Ensure certs directory in the repository
+          cp /tmp/${{ github.event.inputs.domain }}.zip certs/${{ github.event.inputs.domain }}.zip  # Copy zip to repo folder
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add certs/${{ github.event.inputs.domain }}.zip
+          git commit -m "Add SSL certificates zip for ${{ github.event.inputs.domain }}"
+          git push
