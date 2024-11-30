@@ -81,6 +81,6 @@ jobs:
 
 
 ## **Notes**
-Certificates are stored in the repository under the certs/ directory.
-The Cloudflare API token must have DNS:Edit permissions.
-This action assumes certbot supports wildcard certificates using the DNS plugin.
+- Certificates are stored in the repository under the certs/ directory.
+- The Cloudflare API token must have DNS:Edit permissions.
+- This action assumes certbot supports wildcard certificates using the DNS plugin.
