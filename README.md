@@ -77,3 +77,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+
+
+
+## **Notes**
+Certificates are stored in the repository under the certs/ directory.
+The Cloudflare API token must have DNS:Edit permissions.
+This action assumes certbot supports wildcard certificates using the DNS plugin.
